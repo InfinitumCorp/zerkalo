@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zerkalo"
+version = "0.1.0"
+description = "Zerkalo™ — reflexive simulation engine. Builds a synthetic public of AI agents, rehearses a message inside it, and forecasts the outcome."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Reflexive Control" }]
+dependencies = [
+  "anthropic>=1.0",
+  "pydantic>=2.6",
+  "networkx>=3.2",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+zerkalo = "zerkalo.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["zerkalo*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,51 @@
+# Illustrative scenario: a fictional city proposal, used to demo the pipeline.
+name: Weekend pedestrian zone
+proposition: "Moscow residents support closing the central boulevard ring to cars on summer weekends"
+goal: increase
+context: |
+  The city has floated a pilot: from June to August the central boulevard ring would be closed to
+  private cars on Saturdays and Sundays and opened to pedestrians, cyclists and street events.
+seed_files:
+  - seed/brief.md
+language: Russian
+n_agents: 300
+n_llm_agents: 24
+rounds: 10
+active_fraction: 0.35
+random_seed: 7
+
+segments:
+  - { name: Urban professionals, share: 0.32, description: "25-45, central districts, use metro and car-sharing", baseline_stance: 0.15, susceptibility: 0.55 }
+  - { name: Drivers & commuters, share: 0.22, description: "Drive into the centre for work or errands", baseline_stance: -0.45, susceptibility: 0.3 }
+  - { name: Pensioners, share: 0.2, description: "65+, value order and accessibility", baseline_stance: -0.15, susceptibility: 0.35 }
+  - { name: Students & young adults, share: 0.16, description: "18-24, cycle and walk, very online", baseline_stance: 0.35, susceptibility: 0.7 }
+  - { name: Small businesses, share: 0.10, description: "Shops and cafés on and near the ring", baseline_stance: -0.05, susceptibility: 0.45 }
+
+premise:
+  label: A
+  source: "City news outlet"
+  text: "Summer weekends on the boulevards: no cars, free concerts, open cafés. A pilot for three months, then the city asks residents."
+  stance: 0.8
+  reach: 0.15
+  inject_round: 2
+
+variants:
+  - label: B
+    source: "City news outlet"
+    text: "Businesses on the boulevard ring expect weekend footfall to rise when streets open to pedestrians. Delivery access stays open until 10:00."
+    stance: 0.75
+    reach: 0.15
+    inject_round: 2
+  - label: C
+    source: "Local creators network"
+    text: "We walked the whole ring with no traffic: 40 minutes, zero exhaust, kids on bikes. This is what Moscow could feel like every summer weekend."
+    stance: 0.85
+    reach: 0.2
+    inject_round: 2
+
+models:
+  agent: claude-opus-5-5
+  analyst: claude-opus-5-5
+  agent_effort: low
+  analyst_effort: high
+  concurrency: 8
