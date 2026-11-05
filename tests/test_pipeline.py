@@ -98,5 +98,27 @@ def test_cli_end_to_end(tmp_path, capsys):
     assert main(["interview", str(run_path), "--agent", "0", "--ask", "Why do you feel that way?", "--mock"]) == 0
     assert "mock" in capsys.readouterr().out
     assert main(["init", str(tmp_path / "new")]) == 0
-    assert (tmp_path / "new" / "scenario.yaml").exists()
     assert load_scenario(tmp_path / "new" / "scenario.yaml").premise is not None
+
+
+def test_seed_file_cannot_escape(tmp_path):
+    scenario = tmp_path / "scenario"
+    scenario.mkdir()
+    (tmp_path / "secret.txt").write_text("nope", encoding="utf-8")
+    (scenario / "ok.txt").write_text("visible", encoding="utf-8")
+    (scenario / "scenario.yaml").write_text("name: x\nproposition: y\nseed_files:\n  - ../secret.txt\n", encoding="utf-8")
+    sc = load_scenario(scenario / "scenario.yaml")
+    with pytest.raises(ValueError, match="escapes"):
+        sc.seed_text()
+    sc.seed_files = ["ok.txt"]
+    assert "visible" in sc.seed_text()
+
+
+def test_compare_label_cannot_escape(tmp_path):
+    sc = small()
+    sc.n_agents, sc.rounds = 20, 1
+    sc.variants = []
+    sc.premise = Premise(label="../escape", text="hello", stance=0.2)
+    with pytest.raises(ValueError, match="folder name"):
+        run(compare(sc, MockLLM(), tmp_path / "cmp", include_baseline=False))
+    assert not (tmp_path / "escape").exists()

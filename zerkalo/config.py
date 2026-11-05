@@ -66,9 +66,12 @@ class Scenario(BaseModel):
     base_dir: Path = Path(".")
 
     def seed_text(self) -> str:
+        root = self.base_dir.resolve()
         parts = []
         for f in self.seed_files:
-            p = (self.base_dir / f).resolve()
+            p = (root / f).resolve()
+            if not p.is_relative_to(root):
+                raise ValueError(f"seed file escapes the scenario directory: {f}")
             parts.append(f"### {p.name}\n{p.read_text(encoding='utf-8')}")
         return "\n\n".join(parts)
 

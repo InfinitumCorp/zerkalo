@@ -13,6 +13,17 @@ from .llm import LLM
 from .simulation import RunResult, Simulation
 
 
+def variant_dir(out_dir: Path, label: str) -> Path:
+    """A premise label is a folder name, not a path."""
+    if label in {"", ".", ".."} or label != Path(label).name:
+        raise ValueError(f"premise label is not a single folder name: {label!r}")
+    root = out_dir.resolve()
+    dest = (root / label).resolve()
+    if dest.parent != root:
+        raise ValueError(f"premise label is not a single folder name: {label!r}")
+    return dest
+
+
 async def compare(sc: Scenario, llm: LLM, out_dir: Path, include_baseline: bool = True, progress=None) -> list[RunResult]:
     base = Simulation(sc, llm)
     await base.setup()
@@ -20,10 +31,11 @@ async def compare(sc: Scenario, llm: LLM, out_dir: Path, include_baseline: bool 
     results = []
     for p in premises:
         label = p.label if p else "baseline"
+        dest = variant_dir(out_dir, label)
         if progress:
             progress(label)
         res = await base.fork(p).run()
-        res.save(out_dir / label)
+        res.save(dest)
         results.append(res)
     (out_dir / "comparison.md").write_text(table(sc, results), encoding="utf-8")
     return results
