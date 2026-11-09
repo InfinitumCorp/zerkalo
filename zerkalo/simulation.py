@@ -21,6 +21,7 @@ from typing import Callable
 import networkx as nx
 
 from .config import Premise, Scenario
+from .geo import maybe_annotate
 from .llm import LLM, ZerkaloLLMError, premise_strength
 from .network import build_graph
 from .personas import Agent, build_population
@@ -119,7 +120,7 @@ class RunResult:
         d = Path(out_dir)
         d.mkdir(parents=True, exist_ok=True)
         dump = lambda name, obj: (d / name).write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
-        dump("scenario.json", json.loads(self.scenario.model_dump_json(exclude={"base_dir"})))
+        dump("scenario.json", json.loads(self.scenario.model_dump_json(exclude={"base_dir", "geo_routing"})))
         dump("world.json", self.world.model_dump())
         dump("agents.json", [a.to_dict() for a in self.agents])
         dump("timeline.json", self.timeline)
@@ -127,6 +128,7 @@ class RunResult:
         with (d / "posts.jsonl").open("w", encoding="utf-8") as f:
             for p in self.posts:
                 f.write(json.dumps(asdict(p), ensure_ascii=False) + "\n")
+        maybe_annotate(d, self.scenario, self.posts)
         return d
 
 
