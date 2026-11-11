@@ -35,7 +35,10 @@ Built in-house by Reflexive Control, Moscow.
 pip install -e ".[dev]"
 ```
 
-Python 3.10+. To use Claude, set `ANTHROPIC_API_KEY` or sign in with `ant auth login`.
+Python 3.10+. To use Claude, set `ANTHROPIC_API_KEY` or sign in with `ant auth login`. Or run keyless
+open-weight models (no API key, no spend): point `ZERKALO_OPEN_WEIGHTS_URL` at any OpenAI-compatible
+server you control — Ollama `http://localhost:11434/v1` by default, llama.cpp, vLLM, LM Studio — and
+name that server's models in the scenario's `models:` block (e.g. `agent: qwen3:8b`).
 
 ## Use
 

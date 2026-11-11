@@ -129,6 +129,94 @@ class ClaudeLLM:
         return "".join(b.text for b in resp.content if b.type == "text")
 
 
+# ---------------------------------------------------------------------------- Open weights
+
+OPEN_WEIGHTS_URL = "http://localhost:11434/v1"
+
+
+class OpenWeightsLLM:
+    """Keyless open-weight models over any OpenAI-compatible server the operator
+    runs: Ollama (default), llama.cpp, vLLM, LM Studio. No API key is needed or
+    sent. Model names come from the scenario's ``Models`` (``agent``/``analyst``
+    are server model ids, e.g. ``qwen3:8b``). Reasoning models' inlined
+    ``<think>`` blocks are stripped, as with the prediction backends."""
+
+    def __init__(self, models: Models, url: str | None = None, post: Any | None = None):
+        import os
+
+        self.models = models
+        self.url = (url or os.environ.get("ZERKALO_OPEN_WEIGHTS_URL") or OPEN_WEIGHTS_URL).rstrip("/")
+        self._key = os.environ.get("ZERKALO_OPEN_WEIGHTS_KEY", "")
+        # POST json -> json. Injectable for tests; default uses urllib in a thread.
+        self._post = post or self._post_json
+        self.sem = asyncio.Semaphore(models.concurrency)
+        self.usage = Usage()
+
+    def _cfg(self, role: Role) -> str:
+        return self.models.agent if role == "agent" else self.models.analyst
+
+    def _post_json(self, path: str, body: dict) -> dict:
+        import json as _json
+        import urllib.request
+
+        req = urllib.request.Request(
+            f"{self.url}{path}",
+            data=_json.dumps(body).encode(),
+            headers={"content-type": "application/json", **({"authorization": f"Bearer {self._key}"} if self._key else {})},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=600) as res:
+            return _json.loads(res.read())
+
+    async def _chat(self, model: str, messages: list[dict], response_format: dict | None = None) -> dict:
+        body: dict[str, Any] = {"model": model, "max_tokens": 16000, "messages": messages}
+        if response_format:
+            body["response_format"] = response_format
+        async with self.sem:
+            try:
+                return await asyncio.to_thread(self._post, "/chat/completions", body)
+            except Exception as e:  # noqa: BLE001 - surface any transport/server failure as ours
+                raise ZerkaloLLMError(f"open-weight model server error: {e}") from e
+
+    @staticmethod
+    def _answer(text: Any) -> str:
+        import re
+
+        return re.sub(r"<think>[\s\S]*?</think>", "", "" if text is None else str(text)).strip()
+
+    async def structured(self, system, prompt, schema, *, role, hint=None):
+        import json as _json
+
+        model = self._cfg(role)
+        messages = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ]
+        out = await self._chat(model, messages, {"type": "json_schema", "json_schema": {"name": "output", "schema": schema.model_json_schema()}})
+        self.usage.add(_usage(out))
+        text = self._answer(out.get("choices", [{}])[0].get("message", {}).get("content", ""))
+        try:
+            return schema.model_validate(_json.loads(text))
+        except Exception as e:  # noqa: BLE001
+            raise ZerkaloLLMError(f"open-weight model returned no valid {schema.__name__} JSON: {e}") from e
+
+    async def text(self, system, messages, *, role, hint=None):
+        model = self._cfg(role)
+        out = await self._chat(model, [{"role": "system", "content": system}, *messages])
+        self.usage.add(_usage(out))
+        return self._answer(out.get("choices", [{}])[0].get("message", {}).get("content", ""))
+
+
+def _usage(out: dict) -> Any:
+    """A usage object shaped like the Anthropic SDK's, for Usage.add()."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        input_tokens=out.get("usage", {}).get("prompt_tokens", 0) or 0,
+        output_tokens=out.get("usage", {}).get("completion_tokens", 0) or 0,
+    )
+
+
 # ---------------------------------------------------------------------------- Mock
 
 FIRST = ["Anna", "Ivan", "Olga", "Dmitri", "Elena", "Sergei", "Maria", "Pavel", "Irina", "Alexei",
@@ -228,4 +316,13 @@ class MockLLM:
 
 
 def make_llm(models: Models, mock: bool, seed: int = 7) -> LLM:
-    return MockLLM(seed=seed) if mock else ClaudeLLM(models)
+    """Claude when credentials exist; the keyless open-weight server when its URL
+    is set (or ZERKALO_LLM=open-weights forces it); the offline mock otherwise."""
+    import os
+
+    if mock:
+        return MockLLM(seed=seed)
+    open_weights = os.environ.get("ZERKALO_OPEN_WEIGHTS_URL") or os.environ.get("ZERKALO_LLM") == "open-weights"
+    if open_weights:
+        return OpenWeightsLLM(models)
+    return ClaudeLLM(models)
