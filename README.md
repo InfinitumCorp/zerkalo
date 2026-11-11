@@ -28,6 +28,7 @@ Built in-house by Reflexive Control, Moscow.
 | **04 Read the forecast** | `report.py` | Metrics (support, opposition, exposure, polarization, tipping round, segment shifts, top posts, biggest movers) are turned by an analyst model into a forecast with drivers, risks and recommended adjustments, in Markdown and HTML. |
 | **Design the outcome** | `compare.py` | A/B tests premise variants against the *same* world, agents, graph and random stream, so any difference in outcome comes from the message alone. |
 | **Interview** | `interview.py` | After a run, question any simulated person about why they think what they think. |
+| **Rank a draft** | `feed_rank.py` | Scores a draft the way X For You does: predicted action probabilities times the published weights. It does not use raw like counts, and it does not change the rehearsal feed. |
 
 ## Install
 

@@ -1,0 +1,1 @@
+The value model in zerkalo/feed_rank.py is a translation of xai-org/x-algorithm (Apache-2.0), xai-value-model/scoring.rs and the weights in home-mixer/params/param.rs, as published 2026-11-11. The Phoenix model, visibility filters, takedowns and moderation rules were not copied.
