@@ -1,18 +1,28 @@
-"""Command line: zerkalo run | compare | report | interview | init"""
+"""Command line: zerkalo run | compare | report | interview | init | settings"""
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 
 from . import __version__
 from .compare import compare, rank
 from .config import load_scenario
+from .geo import announce, annotate_saved_run
 from .interview import ask, load_agent
 from .llm import ZerkaloLLMError, make_llm
 from .report import generate
+from .settings import (
+    GeoSettingsError,
+    geo_routing_enabled,
+    load_settings,
+    save_settings,
+    set_cli_geo_override,
+    settings_path,
+)
 from .simulation import Simulation, run_dir
 
 BANNER = "ZERKALO™ — reflexive simulation engine"
@@ -31,6 +41,7 @@ n_llm_agents: 24          # how many of them reason with Claude each round
 rounds: 10
 active_fraction: 0.35
 random_seed: 7
+# geo_routing: false   # cyber geo-routing annotations; leave unset to keep the default off
 premise:
   label: A
   source: "Owned outlet"
@@ -58,10 +69,20 @@ def _progress(snap: dict) -> None:
           f"oppose {snap['oppose']:>5.0%}  exposed {snap['exposed']:>5.0%}", flush=True)
 
 
+def _add_geo_flag(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--geo-routing",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="annotate with cyber geo-routing for this run (IP country and domain category). Default off.",
+    )
+
+
 async def cmd_run(a) -> int:
     sc = load_scenario(a.scenario)
     if a.rounds:
         sc.rounds = a.rounds
+    geo_routing_enabled(sc)
     llm = make_llm(sc.models, a.mock, sc.random_seed)
     print(f"{BANNER}\n{'[MOCK MODE — synthetic numbers] ' if a.mock else ''}Scenario: {sc.name}")
     sim = Simulation(sc, llm)
@@ -71,6 +92,7 @@ async def cmd_run(a) -> int:
           f"{sim.graph.number_of_edges()} follow ties\n· rehearsing:")
     res = await sim.run(progress=_progress)
     out = res.save(run_dir(a.out, sc))
+    announce(out, sc)
     print("· reading the forecast …", flush=True)
     fc = await generate(out, llm)
     s = res.summary()
@@ -86,6 +108,7 @@ async def cmd_compare(a) -> int:
     if not sc.all_premises():
         print("scenario has no premise or variants to compare", file=sys.stderr)
         return 2
+    geo_routing_enabled(sc)
     llm = make_llm(sc.models, a.mock, sc.random_seed)
     out = run_dir(a.out, sc, "compare")
     print(f"{BANNER}\n{'[MOCK MODE — synthetic numbers] ' if a.mock else ''}Comparing {len(sc.all_premises())} premise(s) + baseline")
@@ -95,6 +118,7 @@ async def cmd_compare(a) -> int:
     if a.report:
         for r in results:
             await generate(out / (r.premise.label if r.premise else "baseline"), llm)
+    announce(out, sc)
     print(f"Best: {best.premise.label if best.premise else 'baseline'}  ·  {out}")
     return 0
 
@@ -103,8 +127,11 @@ async def cmd_report(a) -> int:
     path = Path(a.run)
     sc = load_scenario(a.scenario) if a.scenario else None
     from .config import Models
+    geo_routing_enabled(sc)
     llm = make_llm(sc.models if sc else Models(), a.mock)
     fc = await generate(path, llm)
+    annotate_saved_run(path, sc)
+    announce(path, sc)
     print(f"{fc.headline}\n{path / 'report.html'}")
     return 0
 
@@ -127,6 +154,20 @@ async def cmd_interview(a) -> int:
         print(f"{agent['name'].split()[0].lower()} › {reply}\n")
         if a.ask and not questions:
             break
+    return 0
+
+
+def cmd_settings(a) -> int:
+    current = load_settings(strict=True)
+    path = settings_path()
+    if a.geo_routing is not None:
+        current.geo_routing = a.geo_routing
+        path = save_settings(current)
+    print(f"cyber geo-routing: {'on' if current.geo_routing else 'off'}")
+    env = os.environ.get("INFINITUM_GEO_ENABLED")
+    if env is not None and env.strip() != "":
+        print(f"INFINITUM_GEO_ENABLED: {env.strip()}")
+    print(f"file: {path}")
     return 0
 
 
@@ -156,17 +197,28 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--out", default="runs")
     r.add_argument("--rounds", type=int)
     r.add_argument("--mock", action="store_true", help="offline deterministic LLM (no API calls, synthetic numbers)")
+    _add_geo_flag(r)
 
     c = sub.add_parser("compare", help="A/B test premise variants on the same public")
     c.add_argument("scenario")
     c.add_argument("--out", default="runs")
     c.add_argument("--report", action="store_true", help="also write a full report per variant")
     c.add_argument("--mock", action="store_true")
+    _add_geo_flag(c)
 
     rp = sub.add_parser("report", help="(re)write the forecast for a finished run")
     rp.add_argument("run")
     rp.add_argument("--scenario")
     rp.add_argument("--mock", action="store_true")
+    _add_geo_flag(rp)
+
+    st = sub.add_parser("settings", help="show or save options; cyber geo-routing defaults to off")
+    st.add_argument(
+        "--geo-routing",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="persist cyber geo-routing on or off",
+    )
 
     i = sub.add_parser("interview", help="question an agent from a finished run")
     i.add_argument("run")
@@ -178,13 +230,20 @@ def main(argv: list[str] | None = None) -> int:
     n.add_argument("dir")
 
     a = p.parse_args(argv)
+    if a.cmd != "settings":
+        set_cli_geo_override(getattr(a, "geo_routing", None))
     try:
         if a.cmd == "init":
             return cmd_init(a)
+        if a.cmd == "settings":
+            return cmd_settings(a)
         return asyncio.run({"run": cmd_run, "compare": cmd_compare, "report": cmd_report, "interview": cmd_interview}[a.cmd](a))
     except ZerkaloLLMError as e:
         print(f"LLM error: {e}", file=sys.stderr)
         return 1
+    except GeoSettingsError as e:
+        print(str(e), file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

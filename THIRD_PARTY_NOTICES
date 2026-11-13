@@ -1,0 +1,59 @@
+Third-party notices
+===================
+
+Zerkalo can download the two datasets below for optional cyber geo-routing
+annotations. They are not stored in git. `scripts/fetch_geo_dat.py` checks
+each file against `data/geo.lock.json` and the official `.sha256sum` asset
+from the same release, and refuses to install a file whose digest differs.
+The forecast does not read these files while geo-routing is off.
+
+The bytes are used unmodified.
+
+
+1. v2fly geoip — geoip.dat
+--------------------------
+
+Project:  https://github.com/v2fly/geoip
+Release:  https://github.com/v2fly/geoip/releases/tag/202611080027
+Asset:    geoip.dat
+Tag:      202611080027
+SHA-256:  eedb24b3b9fcba27e06b92c0428dab90d9496083091ae4cf39e11387fd99d0e2
+License:  Creative Commons Attribution-ShareAlike 4.0 International
+          https://creativecommons.org/licenses/by-sa/4.0/
+
+Attribution: GeoIP data by the v2fly geoip contributors
+(https://github.com/v2fly/geoip), licensed under CC BY-SA 4.0.
+If you share the dataset, keep this attribution and the same license.
+
+
+2. v2fly domain-list-community — dlc.dat, stored as geosite.dat
+----------------------------------------------------------------
+
+Project:  https://github.com/v2fly/domain-list-community
+Release:  https://github.com/v2fly/domain-list-community/releases/tag/20261108011013
+Asset:    dlc.dat (saved locally as geosite.dat)
+Tag:      20261108011013
+SHA-256:  dc4192dd1b644a38276ed06136d26e729fa674d25785adb38c87e040e92376b2
+License:  MIT
+
+MIT License
+
+Copyright (c) 2018-2019 V2Ray
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

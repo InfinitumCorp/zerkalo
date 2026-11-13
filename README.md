@@ -111,6 +111,32 @@ Stance runs from −1 (strongly against) to +1 (strongly for). *Support* is the 
 repost of it. A forecast describes a synthetic public: use it as directional evidence and to compare
 messages, not as a poll. `--mock` output is synthetic and only exercises the pipeline.
 
+## Cyber geo-routing
+
+Optional annotations label IP addresses and domain names in a run with country and category
+data from the v2fly geoip and geosite lists. The switch is off unless you turn it on, and a
+run with it off is unchanged.
+
+```bash
+zerkalo settings                   # cyber geo-routing: off
+zerkalo settings --geo-routing     # persist on
+zerkalo settings --no-geo-routing  # persist off
+zerkalo run scenario.yaml --geo-routing
+```
+
+The saved switch is `~/.config/zerkalo/settings.json` (override the path with
+`ZERKALO_SETTINGS_PATH`). For one process, `INFINITUM_GEO_ENABLED=1` or `0` overrides
+that file, and `--geo-routing` / `--no-geo-routing` overrides both. A scenario can set
+`geo_routing: true` or `false`; omit the key to keep the saved switch. Lists are not
+in git. From a checkout:
+
+```bash
+python scripts/fetch_geo_dat.py
+```
+
+That downloads the pinned v2fly release assets into `data/geo/` and checks them against
+`data/geo.lock.json` and the official `.sha256sum` files. See `THIRD_PARTY_NOTICES`.
+
 ## Develop
 
 ```bash

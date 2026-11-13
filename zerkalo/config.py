@@ -62,6 +62,10 @@ class Scenario(BaseModel):
     language: str = "English"
     random_seed: int = 7
     models: Models = Models()
+    geo_routing: bool = Field(
+        False,
+        description="Annotate this scenario with cyber geo-routing lookups. Omit to use the saved switch. Default off.",
+    )
 
     base_dir: Path = Path(".")
 
